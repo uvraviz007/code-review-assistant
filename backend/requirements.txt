@@ -1,0 +1,8 @@
+Flask
+python-dotenv
+Flask-CORS
+pymongo
+# For background tasks (Recommended)
+celery
+redis # Celery broker
+# Add your chosen LLM SDK (e.g., openai, google-genai, anthropic)
