@@ -6,9 +6,9 @@ from datetime import datetime
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from pymongo import MongoClient
 from bson.objectid import ObjectId
 from review_processor import perform_review_task 
+
 
 
 load_dotenv()
