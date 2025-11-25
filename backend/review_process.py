@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # --- CONFIGURATION ---
-# TODO: PASTE YOUR GOOGLE GEMINI KEY HERE
+# The API key is correctly loaded from the environment
 GEMINI_API_KEY = os.environ.get("API_KEY") 
 
 
@@ -14,15 +14,24 @@ def clean_json_string(json_string):
     """
     Cleans the string to ensure it's valid JSON by aggressively extracting 
     only the content between the first { and the last } in the string.
+    
+    Uses a highly robust regex to find the complete JSON object, ignoring 
+    any surrounding text (markdown, comments, intros/outros).
     """
-    match = re.search(r"(\{.*?\})", json_string.strip(), re.DOTALL | re.IGNORECASE)
+    # Pattern 1: Find the JSON block, even if wrapped in markdown or other text
+    match = re.search(r"\{[\s\S]*\}", json_string.strip(), re.DOTALL)
     
     if match:
-        return match.group(1).strip()
-    if json_string.strip().startswith(''):
-        json_string = re.sub(r"json\s*|```\s*", "", json_string, flags=re.DOTALL | re.IGNORECASE)
+        extracted_json = match.group(0).strip()
+        
+        if extracted_json.startswith(''):
+             extracted_json = re.sub(r"json\s*|\s*", "", extracted_json, flags=re.DOTALL | re.IGNORECASE)
+        
+        if extracted_json.startswith('{') and extracted_json.endswith('}'):
+             return extracted_json
     
     return json_string.strip()
+
 
 def perform_review(code_content, filename):
     """
@@ -30,57 +39,73 @@ def perform_review(code_content, filename):
     Strictly enforces compilation rules and human-like commenting.
     """
     if not GEMINI_API_KEY or "AIza" not in GEMINI_API_KEY:
-        return {"status": "error", "message": "Invalid or missing Google Gemini API Key in review_process.py"}
+        return {"status": "error", "message": "API Key not found or is invalid. Check your .env file and environment setup."}
 
     try:
-        print(f"   [Process] Starting Strict Compiler Analysis for {filename}...")
+        print(f"  [Process] Starting Strict Compiler Analysis for {filename}...")
         
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-2.0-flash')
 
-        # --- UPDATED PROMPT ---
         prompt = (
-            f"You are a strict Code Compiler and Senior Software Engineer. Review the file: {filename}\n"
+            f"You are a highly demanding and extremely strict Code Compiler and Senior Software Engineer. Review the file: {filename}\n"
             f"Code Content:\n\n{code_content}\n```\n\n"
-            "*ANALYSIS RULES:*\n"
-            "1. *Strict Syntax Check:* Treat missing namespaces (e.g., cout without using namespace std; or std::), missing semicolons, or undefined variables as *CRITICAL ERRORS*.\n"
-            "2. *Runtime/Logic Check:* Look for infinite loops, off-by-one errors, or security risks.\n"
-            "3. *Optimization:* If code is valid, look for performance or readability improvements.\n\n"
-            "*OUTPUT FORMAT (JSON ONLY):*\n"
-            "{\n"
-            '  "has_error": true/false, (True if syntax error, missing import/namespace, or runtime crash. False if code runs but is just ugly/slow)\n'
-            '  "status_emoji": "🚨" (Error) or "⚡" (Optimized),\n'
-            '  "title": "Short status title (e.g., Compilation Error / Optimized Code Available)",\n'
-            '  "issues": ["List of syntax/runtime errors. Empty if code is valid."],\n'
-            '  "suggestions": ["List of specific improvements."],\n'
-            '  "review_markdown": "Brief markdown explanation.",\n'
-            '  "corrected_code": "The Final Code. RULES: 1. Fix all errors. 2. Optimize logic. 3. COMMENTS: Remove obvious comments (e.g., \'include library\'). Only add short, necessary comments where logic is complex, exactly how a human would write them."\n'
-            "}\n"
+            "*STRICT ANALYSIS RULES:*\n"
+            "1. *CRITICAL ERROR (has_error: true) ONLY IF:* The code fails compilation, would crash at runtime (e.g., divide by zero, infinite loop), or has missing essential components (e.g., missing C++ namespaces or Python imports).\n"
+            "2. *VALID CODE (has_error: false) IF:* The code runs and executes successfully, even if it has poor style, is inefficient, or could be refactored.\n"
+            "3. *Optimization:* List all style and efficiency issues under 'suggestions'.\n"
+            "4. *Corrected Code:* Provide the final, clean, optimized, and strictly correct version.\n\n"
+            "*COMMENTING RULE (MANDATORY):* In the 'corrected_code' output, *STRICTLY PROHIBIT* all obvious, verbose, or boilerplate comments (e.g., // Initialize loop). Only include comments when explaining complex, non-obvious logic, exactly how a professional human developer would comment for clarity.\n\n"
+            "*RESPONSE INSTRUCTIONS:* Generate the output as a single, valid JSON object following the schema defined below. Do not include any text, headers, or markdown outside of the JSON block.\n\n"
+            "*SUCCESS EXAMPLE (NO ERROR):* If the code runs, set \"has_error\": false, \"issues\": [], and \"status_emoji\": \"⚡\"."
         )
-
-        response = model.generate_content(prompt)
         
-        # Clean and Parse JSON
+        # Define the expected JSON Schema for structured output
+        json_schema = {
+            "type": "OBJECT",
+            "properties": {
+                "has_error": {"type": "BOOLEAN", "description": "True if code fails to run (syntax/runtime/missing imports). False if it runs but has style/optimization issues."},
+                "status_emoji": {"type": "STRING", "description": "Emoji: 🚨 for error, ⚡ for optimized/valid."},
+                "title": {"type": "STRING", "description": "Short status title (e.g., Compilation Error / Optimized Code Available)."},
+                "issues": {"type": "ARRAY", "items": {"type": "STRING"}, "description": "List of BREAKING ERRORS only. Empty if has_error is false."},
+                "suggestions": {"type": "ARRAY", "items": {"type": "STRING"}, "description": "List of specific logic fixes, improvements, or optimization suggestions."},
+                "review_markdown": {"type": "STRING", "description": "Brief markdown explanation of the review."},
+                "corrected_code": {"type": "STRING", "description": "The Final Fixed/Optimized Code. Must follow the strict COMMENTING RULE."}
+            },
+            "required": ["has_error", "status_emoji", "title", "issues", "suggestions", "review_markdown", "corrected_code"]
+        }
+
+        generation_config = {
+            "response_mime_type": "application/json",
+            "response_schema": json_schema
+        }
+
+        response = model.generate_content(
+            prompt,
+            generation_config=generation_config # Corrected keyword argument
+        )
+        
+        # Clean and attempt to parse the JSON
         raw_text = response.text
         cleaned_json = clean_json_string(raw_text)
         
         try:
             review_data = json.loads(cleaned_json)
-        except json.JSONDecodeError:
-            print("   [Process] JSON Parse failed, falling back to text.")
+        except json.JSONDecodeError as e:
+            print(f"  [Process] JSON Parse failed: {e}")
             review_data = {
                 "has_error": True,
                 "status_emoji": "⚠️",
-                "title": "Analysis Format Error",
-                "issues": ["Could not parse AI response structure."],
-                "suggestions": [],
-                "review_markdown": raw_text,
-                "corrected_code": "// Could not extract code separately."
+                "title": "Analysis Format Error (Intermittent)",
+                "issues": [f"Could not parse AI response structure. JSONDecodeError: {str(e)}."],
+                "suggestions": [f"Raw JSON output received was: {cleaned_json[:200]}..."],
+                "review_markdown": f"The AI response structure was intermittently corrupted. Please try again. Raw output details are available in the Critical Fixes section.",
+                "corrected_code": "// Review failed due to structural error. Check backend logs."
             }
         
-        print("   [Process] Analysis complete.")
+        print("  [Process] Analysis complete.")
         return {"status": "success", "data": review_data}
 
     except Exception as e:
-        print(f"   [Process] Error: {e}")
+        print(f"  [Process] Error: {e}")
         return {"status": "error", "message": str(e)}
