@@ -6,6 +6,17 @@ Technologies used:
 * Python + Flask
 * React Js
 
+## Prompt
+This project uses a strict automated code review prompt that evaluates submitted files with the following rules:
+
+Error Detection: The AI marks code as incorrect only if it contains compilation errors, runtime-breaking logic, or missing essential components (such as missing imports or namespaces).
+
+* Valid Code: If the code runs successfully, it is considered valid—even if it contains performance issues, poor structure, or non-optimal patterns.
+
+* Optimization Suggestions: The system identifies improvements related to readability, structure, optimization, and best practices.
+
+* Auto-Fix Mode: After analysis, a clean and optimized version of the code is generated following professional commenting standards (no unnecessary or obvious comments).
+
 
 
 ##  1.Architecture Summary
