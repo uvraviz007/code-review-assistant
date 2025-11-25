@@ -1,27 +1,24 @@
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-# Import the function from the file above
 from review_process import perform_review  
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 
-ALLOWED_EXTENSIONS = {'py', 'js', 'jsx', 'ts', 'tsx', 'java', 'cpp', 'c', 'html', 'css'}
+ALLOWED_EXTENSIONS = {'py', 'js', 'jsx', 'ts', 'tsx', 'java', 'cpp', 'c', 'html', 'css', 'sql'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
-    # Updated provider name to reflect the change
-    return jsonify({"status": "healthy", "provider": "OpenAI GPT-4o Modular"}), 200
+    return jsonify({"status": "healthy", "provider": "Gemini 2.0 Flash (Compiler Mode)"}), 200
 
 @app.route('/api/review', methods=['POST'])
 def review_code():
     print("\n--- NEW REQUEST ---")
     code_content = ""
-    filename = "code_snippet"
+    filename = "snippet.txt"
     
     # 1. Parse Input
     if 'file' in request.files:
@@ -31,23 +28,23 @@ def review_code():
             try:
                 code_content = file.read().decode('utf-8')
             except Exception as e:
-                return jsonify({"error": str(e)}), 400
-    elif 'code' in request.json:
-        code_content = request.json['code']
-
+                return jsonify({"error": "Failed to read file: " + str(e)}), 400
+    
+    # Handle JSON input
+    elif request.json:
+        code_content = request.json.get('code') or request.json.get('text')
+        
     if not code_content:
-        return jsonify({"error": "No code provided"}), 400
+        return jsonify({"error": "No code provided. Please paste code or upload a valid file."}), 400
 
-    # 2. Call the separate logic module
-    print("1. Calling review process...")
+    # 2. Call the analysis
     result = perform_review(code_content, filename)
 
     # 3. Return result
     if result['status'] == 'success':
-        print("2. Sending response to frontend.")
-        return jsonify({"review": result['review']})
+        return jsonify({"review": result['data']})
     else:
         return jsonify({"error": result['message']}), 500
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     app.run(debug=True, port=5000)
