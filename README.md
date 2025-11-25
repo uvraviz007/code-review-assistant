@@ -1,15 +1,18 @@
-🧑‍💻 Code Review Assistant (Gemini-Powered)
+# Code Review 
 
-This project is a full-stack application designed to perform rigorous code reviews using the Google Gemini API. The frontend is built with React/Vite and Tailwind CSS, and the backend uses Flask (Python).
 
-🚀 Setup & Installation
+This project is an application designed to perform rigorous code reviews using the Google Gemini API. The frontend is built with React/Vite and Tailwind CSS, and the backend uses Flask (Python).
+Technologies used:
+* Python + Flask
+* React Js
 
-Follow these steps to set up the backend and frontend environment and get the application running locally.
 
-1. Project Structure
 
-Ensure your file structure resembles the following:
+##  1.Architecture Summary
 
+The project follows a hexagonal (Ports & Adapters) architecture:
+
+```
 /code-review-assistant
 ├── /backend
 │     ├── app.py
@@ -20,31 +23,38 @@ Ensure your file structure resembles the following:
       ├── src/
       │    └── App.jsx
       └── ... (other Node/Vite files)
+```
 
 
-2. Google Gemini API Key Setup
 
-You need a Gemini API Key to run the backend analysis.
+---
 
-Get Your Key: Go to Google AI Studio.
+## 2. Google Gemini API Key Setup
 
-Create .env File: In your /backend directory, create a new file named .env (note the preceding dot).
+To enable backend analysis, you must configure your Google Gemini API key.
 
-Paste Key: Add your API key to this file exactly as shown below:
+### Step 1: Get Your API Key
+- Visit **Google AI Studio** and generate a new Gemini API key.
+
+### Step 2: Create `.env` File
+- Inside your `/backend` directory, create a file named `.env`  
+  (make sure the filename starts with a dot).
+
+### Step 3: Add Your API Key
+Paste your Gemini API key inside the `.env` file exactly in this format:
 
 API_KEY="AIzaSy...YOUR_GEMINI_KEY_HERE"
 
 
-3. Backend Setup (Python)
+## 3. Backend Setup (Python)
 
-The backend handles the API routing and the communication with the Gemini model.
+The backend handles all API routing and communication with the Gemini model.
 
-Navigate to Backend:
 
+### Step 1: Navigate to backend:
 cd backend
 
-
-Create Virtual Environment (Recommended):
+### Step 2: Create Virtual Environment (Recommended):
 This isolates dependencies from your system Python.
 
 # For Windows
@@ -55,38 +65,37 @@ python -m venv venv
 python3 -m venv venv
 source venv/bin/activate
 
-
-Install Dependencies:
-Use the provided requirements.txt file to install all necessary Python packages (Flask, google-generativeai, python-dotenv, etc.).
+### Step 3: Install Dependencies:
 
 pip install -r requirements.txt
 
-
-Run the Backend Server:
-The server will run on http://127.0.0.1:5000.
+### Step 4: Run the Backend Server:
 
 python app.py
 
 
-Leave this terminal running.
+## 3. Frontend Setup 
 
-4. Frontend Setup (React/Vite)
 
-The frontend provides the user interface for pasting code and viewing the review report.
-
-Navigate to Frontend:
-Open a new terminal window.
-
+### Step 1: Navigate to frontend:
 cd frontend
 
-
-Install Node Dependencies:
-Assuming you have a package.json file in the /frontend directory:
-
+### Step 2: Install Node Dependencies:
 npm install
 
 
-Run the Frontend Development Server:
-The frontend will typically run on http://localhost:5173.
+### Step 3: Run the Frontend Development Server:
 
 npm run dev
+
+
+
+
+
+
+
+
+
+
+
+
