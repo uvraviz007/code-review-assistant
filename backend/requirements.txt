@@ -2,6 +2,8 @@ Flask
 python-dotenv
 Flask-CORS
 pymongo
+openai
+google-generativeai
 # For background tasks (Recommended)
 celery
 redis # Celery broker
