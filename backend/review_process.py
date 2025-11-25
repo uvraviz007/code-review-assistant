@@ -12,12 +12,16 @@ GEMINI_API_KEY = os.environ.get("API_KEY")
 
 def clean_json_string(json_string):
     """
-    Cleans the string to ensure it's valid JSON.
-    Removes markdown code blocks if present.
+    Cleans the string to ensure it's valid JSON by aggressively extracting 
+    only the content between the first { and the last } in the string.
     """
-    if "" in json_string:
-        json_string = re.sub(r"json\n?", "", json_string)
-        json_string = re.sub(r"\n?", "", json_string)
+    match = re.search(r"(\{.*?\})", json_string.strip(), re.DOTALL | re.IGNORECASE)
+    
+    if match:
+        return match.group(1).strip()
+    if json_string.strip().startswith(''):
+        json_string = re.sub(r"json\s*|```\s*", "", json_string, flags=re.DOTALL | re.IGNORECASE)
+    
     return json_string.strip()
 
 def perform_review(code_content, filename):
