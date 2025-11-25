@@ -57,13 +57,13 @@ cd backend
 ### Step 2: Create Virtual Environment (Recommended):
 This isolates dependencies from your system Python.
 
-# For Windows
-*python -m venv venv
-*.\venv\Scripts\activate
+#### For Windows
+* python -m venv venv
+* .\venv\Scripts\activate
 
-# For macOS/Linux
-*python3 -m venv venv
-*source venv/bin/activate
+#### For macOS/Linux
+* python3 -m venv venv
+* source venv/bin/activate
 
 ### Step 3: Install Dependencies:
 
