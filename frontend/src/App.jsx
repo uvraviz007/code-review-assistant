@@ -7,11 +7,17 @@ import {
   FileText,
   Loader2,
   Sparkles,
+  Zap,
+  Terminal,
+  ChevronDown,
+  Copy,
+  AlertTriangle,
+  Lightbulb,
+  ArrowRight
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
 
-// NOTE: Ensure your backend is running on this port
 const API_URL = "http://localhost:5000/api/review";
 
 export default function App() {
@@ -19,8 +25,11 @@ export default function App() {
   const [code, setCode] = useState("");
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [review, setReview] = useState(null);
+  
+  // reviewData: { has_error, issues, suggestions, review_markdown, corrected_code }
+  const [reviewData, setReviewData] = useState(null);
   const [error, setError] = useState(null);
+  const [showFullCode, setShowFullCode] = useState(false);
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
@@ -40,7 +49,8 @@ export default function App() {
     }
 
     setLoading(true);
-    setReview(null);
+    setReviewData(null);
+    setShowFullCode(false);
     setError(null);
 
     try {
@@ -48,15 +58,13 @@ export default function App() {
       let headers = {};
 
       if (activeTab === "paste") {
-        body = JSON.stringify({ text: code }); // ✅ changed from { code }
+        body = JSON.stringify({ code: code });
         headers = { "Content-Type": "application/json" };
       } else {
         const formData = new FormData();
         formData.append("file", file);
         body = formData;
       }
-
-      console.log("starting the fetch process,.,....");
 
       const response = await fetch(API_URL, {
         method: "POST",
@@ -65,10 +73,9 @@ export default function App() {
       });
 
       const data = await response.json();
-      console.log(data);
       if (!response.ok) throw new Error(data.error || "Failed to analyze code");
 
-      setReview(data.review);
+      setReviewData(data.review);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -77,253 +84,281 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-800 font-sans">
-      {/* Header with entrance animation */}
+    <div className="min-h-screen relative text-slate-800 font-sans overflow-x-hidden">
+      {/* Backgrounds */}
+      <div className="fixed inset-0 bg-[#0f172a] -z-20"></div>
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/50 via-slate-900/50 to-slate-900 -z-10"></div>
+      <div className="fixed inset-0 bg-[url('[https://grainy-gradients.vercel.app/noise.svg](https://grainy-gradients.vercel.app/noise.svg)')] opacity-20 -z-10"></div>
+
+      {/* Header */}
       <motion.header
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="bg-indigo-600 text-white p-6 shadow-xl relative overflow-hidden"
+        className="border-b border-white/10 bg-white/5 backdrop-blur-md sticky top-0 z-50"
       >
-        <div className="absolute inset-0 bg-indigo-500 opacity-20 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
-        <div className="max-w-6xl mx-auto flex items-center justify-between relative z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <motion.div
-              whileHover={{ rotate: 180 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Code className="w-8 h-8 text-indigo-100" />
-            </motion.div>
-            <h1 className="text-2xl font-bold tracking-tight">CodeReview.ai</h1>
+            <Code className="w-8 h-8 text-indigo-400" />
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Code<span className="text-indigo-400">Review</span>.ai
+            </h1>
           </div>
-          <p className="text-indigo-200 text-sm hidden sm:flex items-center gap-2">
-            <Sparkles className="w-4 h-4" /> AI-Powered Analysis
-          </p>
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium">
+            <Zap className="w-3 h-3" />
+            <span>Gemini 2.0 Flash</span>
+          </div>
         </div>
       </motion.header>
 
-      <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
-        {/* Input Section */}
+      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
+        
+        {/* LEFT COLUMN: Input */}
         <motion.section
-          initial={{ x: -50, opacity: 0 }}
+          initial={{ x: -30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col h-[650px]"
+          className="lg:col-span-5 flex flex-col gap-6"
         >
-          <div className="border-b border-gray-100 bg-gray-50/50 p-1 flex">
-            {["paste", "upload"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-3 text-sm font-medium flex items-center justify-center gap-2 rounded-xl transition-all duration-200 ${
-                  activeTab === tab
-                    ? "bg-white text-indigo-600 shadow-sm ring-1 ring-gray-200"
-                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                {tab === "paste" ? (
-                  <Code className="w-4 h-4" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                {tab === "paste" ? "Paste Code" : "Upload File"}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex-1 p-6 flex flex-col relative">
-            <AnimatePresence mode="wait">
-              {activeTab === "paste" ? (
-                <motion.div
-                  key="paste"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="flex-1 flex flex-col"
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-1 overflow-hidden shadow-2xl flex flex-col h-[700px]">
+             {/* Tabs */}
+            <div className="flex bg-black/20 rounded-xl p-1 shrink-0">
+              {["paste", "upload"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 py-2.5 text-sm font-semibold flex items-center justify-center gap-2 rounded-lg transition-all duration-300 ${
+                    activeTab === tab
+                      ? "bg-indigo-600 text-white shadow-lg"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  }`}
                 >
-                  <textarea
-                    className="flex-1 w-full bg-gray-900 text-gray-100 font-mono text-sm p-4 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
-                    placeholder="// Paste your code here for instant review..."
+                  {tab === "paste" ? <Terminal className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                  {tab === "paste" ? "Editor" : "Upload File"}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-4 flex-1 flex flex-col min-h-0">
+              <AnimatePresence mode="wait">
+                {activeTab === "paste" ? (
+                  <motion.textarea
+                    key="paste"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex-1 w-full bg-slate-950/50 text-indigo-100 font-mono text-sm p-4 rounded-xl border border-white/5 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 outline-none resize-none placeholder:text-slate-600 custom-scrollbar"
+                    placeholder="// Paste your code here..."
                     value={code}
                     onChange={(e) => setCode(e.target.value)}
+                    spellCheck="false"
                   />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="upload"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="flex-1"
-                >
-                  <div className="h-full border-2 border-dashed border-indigo-100 rounded-xl flex flex-col items-center justify-center bg-indigo-50/30 hover:bg-indigo-50 transition-colors group">
-                    <input
-                      type="file"
-                      id="file-upload"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                    <label
-                      htmlFor="file-upload"
-                      className="cursor-pointer flex flex-col items-center text-center w-full h-full justify-center"
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.1, rotate: 10 }}
-                        className="bg-white p-4 rounded-full shadow-sm mb-4"
-                      >
-                        <FileText className="w-10 h-10 text-indigo-500" />
-                      </motion.div>
-                      <span className="text-gray-700 font-medium text-lg">
-                        Drop your file here
-                      </span>
-                      <span className="text-gray-400 text-sm mt-1">
-                        or click to browse
-                      </span>
-                      {file && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="mt-6 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-medium shadow-md flex items-center gap-2"
-                        >
-                          <CheckCircle className="w-3 h-3" /> {file.name}
-                        </motion.div>
-                      )}
-                    </label>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                ) : (
+                  <motion.div
+                    key="upload"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex-1"
+                  >
+                    <div className="h-full border-2 border-dashed border-white/10 rounded-xl flex flex-col items-center justify-center bg-white/5 hover:bg-white/10 hover:border-indigo-500/50 transition-all group">
+                      <input type="file" id="file-upload" className="hidden" onChange={handleFileChange} />
+                      <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center text-center w-full h-full justify-center">
+                        <FileText className="w-12 h-12 text-indigo-400 mb-4 group-hover:scale-110 transition-transform" />
+                        <span className="text-slate-200 font-medium">Click to upload</span>
+                        {file && <div className="mt-4 px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs">{file.name}</div>}
+                      </label>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg flex items-center gap-2 text-sm border border-red-100"
+            {/* Analyze Button */}
+            <div className="p-4 pt-0 shrink-0">
+              {error && <div className="mb-4 text-red-400 text-sm bg-red-500/10 p-3 rounded-lg flex items-center gap-2"><AlertCircle className="w-4 h-4"/> {error}</div>}
+              
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className={`w-full py-4 rounded-xl font-bold text-white shadow-xl flex items-center justify-center gap-2 relative overflow-hidden group ${
+                  loading ? "cursor-not-allowed opacity-80" : "hover:scale-[1.01] active:scale-[0.99]"
+                } transition-all duration-200`}
               >
-                <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
-              </motion.div>
-            )}
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleSubmit}
-              disabled={loading}
-              className={`mt-4 w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
-                loading
-                  ? "bg-indigo-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-indigo-600 to-violet-600 hover:shadow-indigo-500/30"
-              }`}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" /> Analyzing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" /> Analyze Code
-                </>
-              )}
-            </motion.button>
+                <div className={`absolute inset-0 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 ${loading ? '' : 'group-hover:bg-[length:200%_auto] animate-gradient'}`}></div>
+                <span className="relative z-10 flex items-center gap-2">
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                  {loading ? "Analyzing..." : "Analyze Code"}
+                </span>
+              </button>
+            </div>
           </div>
         </motion.section>
 
-        {/* Output Section */}
+        {/* RIGHT COLUMN: Output */}
         <motion.section
-          initial={{ x: 50, opacity: 0 }}
+          initial={{ x: 30, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-lg border border-gray-100 h-[650px] flex flex-col overflow-hidden relative"
+          className="lg:col-span-7 h-[700px] bg-white rounded-2xl shadow-2xl border border-indigo-100/50 flex flex-col overflow-hidden relative"
         >
-          <div className="border-b border-gray-100 bg-gray-50/50 p-4 flex justify-between items-center">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-              <FileText className="w-4 h-4 text-gray-400" /> Review Report
-            </h2>
-            {review && (
-              <span className="text-xs font-mono text-green-600 bg-green-50 px-2 py-1 rounded">
-                Analysis Complete
-              </span>
-            )}
-          </div>
+          {loading ? (
+             <div className="h-full flex flex-col items-center justify-center space-y-6 bg-slate-50">
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+                <p className="text-slate-500 font-medium">Analyzing syntax and logic...</p>
+             </div>
+          ) : reviewData ? (
+            <div className="flex flex-col h-full">
+              
+              {/* 1. STATUS HEADER */}
+              <div className={`p-4 border-b flex items-center justify-between ${
+                reviewData.has_error ? "bg-red-50 border-red-100" : "bg-green-50 border-green-100"
+              }`}>
+                <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${reviewData.has_error ? "bg-red-100" : "bg-green-100"}`}>
+                        {reviewData.has_error ? <AlertTriangle className="w-5 h-5 text-red-600"/> : <CheckCircle className="w-5 h-5 text-green-600"/>}
+                    </div>
+                    <div>
+                        <h2 className={`font-bold ${reviewData.has_error ? "text-red-700" : "text-green-700"}`}>
+                            {reviewData.title || (reviewData.has_error ? "Fixes Required" : "Optimization Available")}
+                        </h2>
+                        <p className="text-xs text-slate-500">
+                           {reviewData.has_error ? "Breaking changes detected" : "Code is valid but can be improved"}
+                        </p>
+                    </div>
+                </div>
+                <span className="text-2xl">{reviewData.status_emoji}</span>
+              </div>
 
-          <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
-            {loading ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-4">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                >
-                  <Loader2 className="w-10 h-10 text-indigo-500" />
-                </motion.div>
-                <p className="animate-pulse">Generating insights...</p>
-              </div>
-            ) : review ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="prose prose-indigo prose-sm max-w-none"
-              >
-                <ReactMarkdown
-                  components={{
-                    h1: ({ node, ...props }) => (
-                      <h1
-                        className="text-2xl font-bold text-gray-900 border-b pb-2 mb-6"
-                        {...props}
-                      />
-                    ),
-                    h2: ({ node, ...props }) => (
-                      <h2
-                        className="text-lg font-bold text-indigo-700 mt-6 mb-3 flex items-center gap-2"
-                        {...props}
-                      />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="space-y-2 mb-4" {...props} />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li className="flex items-start gap-2" {...props}>
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></span>
-                        <span className="flex-1">{props.children}</span>
-                      </li>
-                    ),
-                    code: ({ node, inline, ...props }) =>
-                      inline ? (
-                        <code
-                          className="bg-gray-100 text-pink-600 px-1.5 py-0.5 rounded text-xs font-mono font-bold"
-                          {...props}
-                        />
-                      ) : (
-                        <div className="mockup-code bg-gray-900 rounded-lg overflow-hidden my-4 shadow-md">
-                          <div className="p-3 overflow-x-auto">
-                            <code
-                              className="block text-gray-100 text-xs font-mono leading-relaxed"
-                              {...props}
-                            />
-                          </div>
+              {/* 2. CONTENT AREA (Scrollable) */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                
+                {/* A. CRITICAL ERRORS (Red Box - Only if has_error is True) */}
+                {reviewData.has_error && reviewData.issues && reviewData.issues.length > 0 && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-red-50 border border-red-100 rounded-xl shadow-sm overflow-hidden"
+                    >
+                        <div className="bg-red-100/50 px-4 py-2 border-b border-red-200 font-semibold text-red-800 text-sm flex items-center gap-2">
+                             <AlertCircle className="w-4 h-4"/> 
+                             Critical Fixes
                         </div>
-                      ),
-                  }}
-                >
-                  {review}
-                </ReactMarkdown>
-              </motion.div>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400 text-center">
-                <motion.div
-                  whileHover={{ scale: 1.1, rotate: -5 }}
-                  className="bg-gray-50 p-6 rounded-full mb-4"
-                >
-                  <Code className="w-12 h-12 text-gray-300" />
-                </motion.div>
-                <p className="text-lg font-medium text-gray-500">
-                  Ready to Review
-                </p>
-                <p className="text-sm mt-1 max-w-xs mx-auto">
-                  Submit your code to receive comprehensive AI-powered feedback.
-                </p>
+                        <ul className="divide-y divide-red-100">
+                            {reviewData.issues.map((err, idx) => (
+                                <li key={idx} className="px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
+                                    {err}
+                                </li>
+                            ))}
+                        </ul>
+                    </motion.div>
+                )}
+
+                {/* B. SUGGESTIONS (Blue/Green Box - Always shown if populated) */}
+                {reviewData.suggestions && reviewData.suggestions.length > 0 && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white border border-indigo-100 rounded-xl shadow-sm overflow-hidden"
+                    >
+                        <div className="bg-indigo-50/80 px-4 py-2 border-b border-indigo-100 font-semibold text-indigo-700 text-sm flex items-center gap-2">
+                             <Lightbulb className="w-4 h-4"/> 
+                             Recommended Improvements
+                        </div>
+                        <ul className="divide-y divide-indigo-50">
+                            {reviewData.suggestions.map((sug, idx) => (
+                                <li key={idx} className="px-4 py-3 text-sm text-slate-600 flex items-start gap-2 hover:bg-slate-50">
+                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"></span>
+                                    {sug}
+                                </li>
+                            ))}
+                        </ul>
+                    </motion.div>
+                )}
+
+                {/* C. EXPLANATION (Markdown) */}
+                <div className="prose prose-slate prose-sm max-w-none">
+                    <h3 className="text-slate-800 font-bold text-md border-b pb-2 mb-3">
+                        {reviewData.has_error ? "Detailed Fixes" : "Why these changes help"}
+                    </h3>
+                    <ReactMarkdown
+                         components={{
+                             code: ({node, inline, className, children, ...props}) => (
+                                <code className="bg-slate-100 text-pink-600 px-1 py-0.5 rounded text-xs font-mono font-bold border border-slate-200" {...props}>
+                                  {children}
+                                </code>
+                              )
+                         }}
+                    >
+                        {reviewData.review_markdown}
+                    </ReactMarkdown>
+                </div>
+              
               </div>
-            )}
-          </div>
+
+              {/* 3. FOOTER: DYNAMIC BUTTON */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 shrink-0">
+                  <button 
+                    onClick={() => setShowFullCode(!showFullCode)}
+                    className={`w-full flex items-center justify-between px-4 py-3 border rounded-xl shadow-sm hover:shadow-md transition-all font-medium ${
+                        reviewData.has_error 
+                        ? "bg-red-600 text-white border-red-700 hover:bg-red-700" // Error Style
+                        : "bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700" // Success/Optimized Style
+                    }`}
+                  >
+                     <span className="flex items-center gap-2">
+                        {showFullCode ? <ChevronDown className="w-5 h-5"/> : <Terminal className="w-5 h-5"/>}
+                        {/* Dynamic Text Logic */}
+                        {showFullCode 
+                            ? "Hide Code" 
+                            : (reviewData.has_error ? "View Fixed Code" : "View Optimized Code")
+                        }
+                     </span>
+                     {!showFullCode && (
+                        <span className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                            reviewData.has_error ? "bg-red-700 text-white" : "bg-indigo-500 text-white"
+                        }`}>
+                            Click to view <ArrowRight className="w-3 h-3"/>
+                        </span>
+                     )}
+                  </button>
+
+                  <AnimatePresence>
+                    {showFullCode && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden mt-3"
+                        >
+                            <div className="bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-800 relative group">
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                      onClick={() => navigator.clipboard.writeText(reviewData.corrected_code)}
+                                      className="p-1.5 bg-white/10 text-white rounded hover:bg-white/20"
+                                      title="Copy Code"
+                                    >
+                                        <Copy className="w-4 h-4"/>
+                                    </button>
+                                </div>
+                                <pre className="p-4 text-xs font-mono text-blue-100 overflow-x-auto max-h-[300px] custom-scrollbar">
+                                    {reviewData.corrected_code}
+                                </pre>
+                            </div>
+                        </motion.div>
+                    )}
+                  </AnimatePresence>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center opacity-50 p-6">
+                <Code className="w-16 h-16 text-slate-300 mb-4" />
+                <p className="text-slate-500 font-medium">Ready to Review</p>
+                <p className="text-sm mt-1 max-w-xs mx-auto text-slate-400">
+                    Paste your code to see strict error checking vs style suggestions.
+                </p>
+            </div>
+          )}
         </motion.section>
       </main>
     </div>
